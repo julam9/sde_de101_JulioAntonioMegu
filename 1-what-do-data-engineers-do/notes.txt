@@ -1,0 +1,1 @@
+The first thing to do to enable data analytics is looking at data warehouse, data lake (if exists) and check the quality of the data. If the storage not exists yet, then the first thing to do is create the data warehouse/lake
