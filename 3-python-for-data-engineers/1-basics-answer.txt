@@ -1,0 +1,6 @@
+# Question : Assign a value of 10 to variable a and 20 to variable b
+Answer : 
+a = 10 
+b = 20
+
+# 
