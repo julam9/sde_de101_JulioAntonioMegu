@@ -3,4 +3,16 @@ Answer :
 a = 10 
 b = 20
 
-# 
+# Question: Store the result of a + b in a variable c and print it. What is the result of a + b?
+c = a + b
+print(c) 
+Result : 30
+
+
+s = '  Some string '
+# Question: How do you remove the empty spaces in front of and behind the string s?
+print(s.strip())
+
+l = [1, 2, 3, 4] 
+# Question: How do you access the elements in index 0 and 3? Print the results.
+print(l[0:4:3])
