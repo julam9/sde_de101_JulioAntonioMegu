@@ -1,0 +1,104 @@
+# Question: How do you read data from a sqlite3 database and write to a DuckDB database?
+# Hint: Look at importing the database libraries for sqlite3 and duckdb and create connections to talk to the respective databases
+# Fetch data from the SQLite Customer table
+Answer :
+import sqlite3
+conn = sqlite3.connect('example.db')
+cursor = conn.cursor()
+cursor.execute('SELECT * FROM trip')
+rows = cursor.fetchll()
+# Insert data into the DuckDB Customer table
+Answer :
+import duckdb
+connduck = duckdb.connect('example.duckdb')
+connduck.execute("""
+CREATE TABLE IF NOT EXISTS Customer (
+    customer_id INTEGER,
+    zipcode TEXT,
+    city TEXT,
+    state_code TEXT,
+    datetime_created TIMESTAMP,
+    datetime_updated TIMESTAMP
+)
+""")
+connduck.executemany("INSERT INTO trip VALUES (?, ?, ?)", rows)
+resultduck = connduck.execute("SELECT * FROM trip").fetchall()
+print(resultduck)
+connduck.close()
+
+
+# Cloud storage
+# Question: How do you read data from the S3 location given below and write the data to a DuckDB database?
+# Data source: https://docs.opendata.aws/noaa-ghcn-pds/readme.html station data at path "csv.gz/by_station/ASN00002022.csv.gz"
+# Hint: Use boto3 client with UNSIGNED config to access the S3 bucket
+# Hint: The data will be zipped you have to unzip it and decode it to utf-8
+Answer : 
+import boto3
+import gzip
+import pandas as pd
+import duckdb
+from io import BytesID, StringID
+
+s3 = boto3.client('s3', config=boto3.session.Config(signature_version='unsigned'))
+bucket_name = 'noaa-ghcn-pds'
+file_key = "csv.gz/by_station/ASN00002022.csv.gz"
+response = s3.get_object(Bucket=bucket_name, Key=file_key)
+zipped_content = response['Body'].read()
+with gzip.GzipFile(fileobj=BytesIO(zipped_content)) as f:
+    csv_content = f.read().decode('utf-8')
+df = pd.read_csv(StringIO(csv_content))
+conn = duckdb.connect('example.duckdb')
+conn.execute("CREATE TABLE IF NOT EXISTS station_data AS SELECT * FROM df")
+result = conn.execute("SELECT * FROM station_data LIMIT 5").fetchall()
+print(result)
+
+
+# Question: How do you read data from the CoinCap API given below and write the data to a DuckDB database?
+# URL: "https://api.coincap.io/v2/exchanges"
+# Hint: use requests library
+# Define the API endpoint
+url = "https://api.coincap.io/v2/exchanges"
+Answer :
+import requests
+import pandas as pd
+import duckdb
+response = requests.get(url)
+df = pd.DataFrame(response)
+duckdb_conn = duckdb.connect('database2.db')
+duckdb_conn.execute("DROP TABLE IF EXISTS Exchanges")
+duckdb_conn.execute(
+    """
+CREATE TABLE IF NOT EXISTS Exchanges (
+    id TEXT,
+    name TEXT,
+    rank INTEGER,
+    percentTotalVolume FLOAT,
+    volumeUsd FLOAT,
+    tradingPairs TEXT,
+    socket BOOLEAN,
+    exchangeUrl TEXT,
+    updated BIGINT 
+)
+"""
+)
+duckdb_conn.execure("INSERT INTO Exchanges SELECT * FROM df")
+
+
+# Question: How do you read a CSV file from local disk and write it to a database?
+# Look up open function with csvreader for python
+Answer :
+import csv 
+with open('localfile.csv', mode='r') as file:
+    csv_local = csv.reader(file)
+
+
+# Questions: Use beatiful soup to scrape the below website and print all the links in that website
+# URL of the website to scrape
+url = 'https://example.com'
+Answer : 
+import requests 
+from bs4 import BeautifulSoup
+request = requests.get(url)
+html_ = response.text
+soup = BeautifulSoup(html_, 'html.parser')
+print(soup.text)
