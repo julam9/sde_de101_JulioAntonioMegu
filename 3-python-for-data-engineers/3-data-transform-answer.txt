@@ -1,0 +1,197 @@
+# Question: How do you read data from a CSV file at ./data/sample_data.csv into a list of dictionaries?
+Answer : 
+import csv 
+data_list = []
+with open('./data/sample_data.csv', mode='r') as file:
+    csv_reader = csv.DictReader(file) 
+    for row in csv_reader:
+        data_list.append(row)
+
+
+# Question: How do you remove duplicate rows based on customer ID?
+Answer :
+from cleaning_functions import remove_duplicates
+sample_data = remove_duplicates(sample_data, 'customerID')
+
+
+
+# Question: How do you handle missing values by replacing them with 0?
+Answer :
+import pandas as pd
+sample_data = sample_data.fillna(0)
+
+
+# Question: How do you remove outliers such as age > 100 or purchase amount > 1000?
+Answer :
+sample_data = sample_data[(sample_data['Age']>100) | (sample_data['Purchase_Amount']>1000)]
+
+
+# Question: How do you convert the Gender column to a binary format (0 for Female, 1 for Male)?
+Answer : 
+gender_val = {'Male" : 1, 'Female' : 0}
+sample_data['Gender'] = sample_data['Gender'].map(gender_val)
+
+
+
+# Question: How do you split the Customer_Name column into separate First_Name and Last_Name columns? 
+Answer :
+sample_data[['first_name', 'last_name']] = sample_data['Customer_Name'].str.split(' ', expand=True)
+
+
+# Question: How do you calculate the total purchase amount by Gender?
+Answer :
+your_total_purchase_amount_by_gender = sample_data.groupby('Gender')['Purchase_Amount'].sum().to_dict()
+
+
+# Question: How do you calculate the average purchase amount by Age group?
+Answer : 
+age_bins = [18, 30, 40, 50, 60, 70]
+age_labels = ["18-30", "31-40", "41-50", "51-60", "61-70"]
+sample_data['Age_Group'] = pd.cut(sample_data['Age'], bins=age_bins, labels=age_labels)
+average_purchase_by_age_group = sample_data.groupby('Age_Group')['Purchase_Amount'].mean().to_dict()
+
+
+# Question: How do you connect to DuckDB and load data from a CSV file into a DuckDB table?
+# Connect to DuckDB and load data
+import duckdb
+con = duckdb.connect()
+csv_file_path = './data/sample_data.csv'
+
+# Load CSV data into a DuckDB table
+con.execute(f"""
+    CREATE TABLE my_table AS
+    SELECT * FROM read_csv_auto('{csv_file_path}')
+""")
+result = con.execute("SELECT * FROM my_table LIMIT 5").fetchall()
+print(result)
+con.close()
+
+
+# Question: How do you remove duplicate rows based on customer ID in DuckDB?
+con.execute("CREATE TABLE data_unique AS SELECT DISTINCT * FROM data")
+
+
+# Question: How do you handle missing values by replacing them with 0 in DuckDB?
+Answer : 
+con.execute(
+"""CREATE TABLE data_cleaned AS 
+SELECT 
+     Customer_ID, 
+     Customer_Name, 
+     COALESCE(Age, 0) AS Age,
+     Gender,            
+     COALESCE(Purchase_Amount, 0) AS Purchase_Amount, 
+     Purchase_Date
+FROM sample_data
+"""
+)
+
+
+# Question: How do you remove outliers (e.g., age > 100 or purchase amount > 1000) in DuckDB?
+Answer :
+con.execute(
+""" 
+CREATE TABLE no_outlier AS 
+SELECT 
+    * 
+FROM data_cleaned 
+WHERE Age > 100 
+OR Purchase_Amount > 1000
+"""
+)
+
+
+# Question: How do you convert the Gender column to a binary format (0 for Female, 1 for Male) in DuckDB?
+Answer : 
+con.execute(
+""" 
+CREATE TABLE mapped_gender AS 
+SELECT 
+     Customer_ID, 
+     Customer_Name, 
+     Age,
+     CASE 
+         WHEN Gender == "Female" THEN 0
+         ELSE 1
+     END AS Gender_map
+     Purchase_Amount, 
+     Purchase_Date
+FROM no_outlier
+"""
+)
+
+
+# Question: How do you split the Customer_Name column into separate First_Name and Last_Name columns in DuckDB?
+Answer : 
+con.execute(
+""" 
+CREATE TABLE name_splitted AS 
+SELECT 
+     Customer_ID, 
+     LIST_ELEMENT(STR_SPLIT(Customer_Name, ' '), 0) AS first_name,
+     LIST_ELEMENT(STR_SPLIT(Customer_Name, ' '), 1) AS last_name 
+     Age,
+     Gender_map,
+     Purchase_Amount, 
+     Purchase_Date
+FROM mapped_gender
+"""
+)
+
+
+
+# Question: How do you calculate the total purchase amount by Gender in DuckDB?
+Answer : 
+con.execute(""" 
+SELECT 
+    Gender_map, 
+    SUM(Purchase_Amount) AS total_purchase
+FROM name_splitted
+GROUP BY Gender_map
+""")
+
+
+
+# Question: How do you calculate the average purchase amount by Age group in DuckDB?
+con.execute(""" 
+SELECT 
+    CASE
+        WHEN age BETWEEN 18 AND 30 THEN '18-30'
+        WHEN age BETWEEN 31 AND 40 THEN '31-40'
+        WHEN age BETWEEN 41 AND 50 THEN '41-50'
+        WHEN age BETWEEN 51 AND 60 THEN '51-60'
+        ELSE '61-70'
+    END AS Age_group, 
+    AVG(Purchase_Amount) AS total_purchase
+FROM name_splitted
+GROUP BY Age_group
+""")
+
+
+
+# Question: How do you print the results for total purchase amount by Gender and average purchase amount by Age group in DuckDB?
+Answer :
+result1 = con.execute(""" 
+SELECT 
+    Gender_map, 
+    SUM(Purchase_Amount) AS total_purchase
+FROM name_splitted
+GROUP BY Gender_map
+""").fetchall()
+
+result2 = con.execute(""" 
+SELECT 
+    CASE
+        WHEN age BETWEEN 18 AND 30 THEN '18-30'
+        WHEN age BETWEEN 31 AND 40 THEN '31-40'
+        WHEN age BETWEEN 41 AND 50 THEN '41-50'
+        WHEN age BETWEEN 51 AND 60 THEN '51-60'
+        ELSE '61-70'
+    END AS Age_group, 
+    AVG(Purchase_Amount) AS total_purchase
+FROM name_splitted
+GROUP BY Age_group
+""").fetchall()
+
+print(result1)
+print(result2)
