@@ -1,1 +1,135 @@
-What you should do : 
+3.1. Use standard patterns that progressively transform your data
+- Raw layer stores data from upstream sources as is.
+- Transformed layer: Data from the raw layer is transformed based on a chosen modeling principle to form a set of tables.
+- Consumption layer: Data from the transformed layer are combined to form datasets that directly map to the end-user use case. Business-specific metrics are often defined at this layer. We should ensure that a metric is only defined in one place.
+- Interface layer [Optional]: Data in the consumption layer often confirms the data warehouse naming/data types, etc.An interface layer is often a view that acts as an interface between the warehouse table and the consumers of this table.
+
+
+
+Most frameworks/tools propose their version of the 3-hop architecture:
+1. Apache Spark: Medallion architecture
+- A medallion architecture is a data design pattern used to logically organize data in a lakehouse, with the goal of incrementally and progressively improving the structure and quality of data as it flows through each layer of the architecture (from Bronze ⇒ Silver ⇒ Gold layer tables). Medallion architectures are sometimes also referred to as "multi-hop" architectures.
+- A data lakehouse is a new, open data management architecture that combines the flexibility, cost-efficiency, and scale of data lakes with the data management and ACID transactions of data warehouses, enabling business intelligence (BI) and machine learning (ML) on all data.
+
+2. dbt: Project Structure 
+- We have limited bandwidth for making decisions. We also, as a cooperative social species, rely on systems and patterns to optimize collaboration with others.
+- collaborative projects it's crucial to establish consistent and comprehensible norms
+- A data warehouse is a database that has all your company’s historical data and is used to run analytical queries. In our example, we cannot analyze item and merchant data in one database. We need to bring both of the datasets into our data warehouse, as shown below.
+
+Kimball data modelling 
+There are many approaches to data modeling. Kimball's model is the most widespread, and therefore the most resonant amongst data professionals.
+there is another approach to data modeling that is commonly mentioned in the same breath. This approach is known as Inmon data modeling, named after data warehouse pioneer Bill Inmon
+
+The Star Schema
+To understand Kimball’s approach to data modeling, we should begin by talking about the star schema. The star schema is a particular way of organizing data for analytical purposes. It consists of two types of tables:
+
+A fact table, which acts as the primary table for the schema. A fact table contains the primary measurements, metrics, or ‘facts’ of a business process.
+Many dimension tables associated with the fact table. Each dimension table contains ‘dimensions’ — that is, descriptive attributes of the fact table.
+
+The star schema is:
+Flexible — it allows your data to be easily sliced and diced any which way your business users want to.
+Extensible — you may evolve your star schema in response to business changes.
+Performant — Kimball’s dimensional modeling approach was developed when the majority of analytical systems were run on relational database management systems (RDBMSes).
+
+Kimball’s answer to that is the Four Step Process to dimensional data modeling.
+1. Pick a business process to model. Kimball’s approach begins with a business process, since ultimately, business users would want to ask questions about processes
+2. Decide on the grain. The grain here means the level of data to store as the primary fact table. It should be the most atomic level possible — that is, a level of data that cannot be split further
+
+This captures a core philosophy of Kimball’s approach, which is to do the hard work now, to make it easy to query later.
+
+The dimensional data modeling approach gained traction when it was first introduced in the 90s because:
+1. It gave us speed to business value. Back in the day, data warehouse projects were costly affairs, and needed to show business value as quickly as possible. Data warehouse designers before the Kimball era would often come up with normalized schemas. Kimball was amongst the first to formally realize that denormalized data worked better for analytical workloads compared to normalized data.
+2. Performance reasons. As we’ve mentioned earlier, in Kimball’s time, the majority of analytical workloads were still run on RDBMSes (as Kimball asserts himself, in The Data Warehouse Toolkit)
+
+Kimball-Style Data Modeling, Then And Now
+The biggest thing that has changed today is the difference in costs between data labor versus data infrastructure.
+
+Kimball data modeling demanded that you:
+
+Spent time up front designing the schema
+Spent time building and maintaining data pipelines to execute such schemas (using ETL tools, for the most part)
+Keep a dedicated team around that is trained in Kimball’s methodologies, so that you may evaluate, extend, and modify existing star schemas in response to business process changes.
+
+Today, modern cloud data warehouses have a number of properties to make this ‘snapshotting’ less of a hard requirement:
+- Modern cloud data warehouses are usually backed by a columnar data architecture.
+- Nearly all modern cloud data warehouses run on massively parallel processing (MPP) architectures, meaning that the data warehouse can dynamically spin up or down as many servers as is required to run your query
+- Finally, cloud data warehouses charge by usage, so you pay a low upfront cost, and only pay for what you use.
+
+This approach has a number of benefits:
+
+As Beauchemin puts it: “Compute is cheap. Storage is cheap. Engineering time is expensive.” This approach is as pure a tradeoff between computational resources and engineering time.
+Dimensional data is small and simple when compared to fact data. This means that even a couple thousand rows, snapshotted going back ten years, is a drop in the bucket for modern data warehouses.
+Finally, snapshots give analysts an easy mental model to reason with, compared to the queries that you might have to write for a Type 2 or Type 3 response.
+
+The key insight here is that storage is really cheap today. When storage is cheap, you can get away with ‘silly’ things like partitioning every dimension table every day, in order to get a full history of slowly changing dimensions
+
+The upshot: it is no longer necessary to treat data modeling as a big, momentous undertaking to be done at the start of a data warehousing project. With ‘data modeling layer tools’, you no longer need data engineering to get involved — you may simply give the task of modeling to anyone on your team with SQL experience. So: do it ‘just-in-time’, when you are sure you’re going to need it.
+
+
+Use Technology To Replace Labor Whenever Possible
+A more general principle is to use technology to replace labor whenever possible.
+
+In both cases, the idea is to critically evaluate the balance between computing cost and labor cost. 
+ But remember this: it is usually far more costly to hire an extra data engineer than it is to pay for the marginal cost of DW functionality. 
+
+
+Conclusion
+Think holistically about your data infrastructure. The best companies we work with do more with fewer people
+
+
+Vector Processing
+Vector processing performs the arithmetic operation on the large array of integers or floating-point number. Vector processing operates on all the elements of the array in parallel providing each pass is independent of the other.
+
+Vector processing avoids the overhead of the loop control mechanism that occurs in general-purpose computers.
+Vector processing operates on the entire array in just one operation i.e. it operates on elements of the array in parallel. But, vector processing is possible only if the operations performed in parallel are independent.
+
+3.2. Ensure data is valid before exposing it to its consumers (aka data quality checks)
+
+the process to rectify usage of bad data often involves the time-consuming and expensive re-running of all the affected processes!
+
+we should check the data before making it available for consumption.
+
+While DQ checks help significantly, it’s easy to overdo DQ checks; some issues with too many tests are:
+1. Increased pipeline run time
+2. Increased cost, as running tests require a full table scan (not always)
+3. Redundant tests. E.g., having a Not null check on two tables, unioning them, and doing a not null check again.
+4. More code
+
+You have to decide on a tradeoff between the quality of your output data and the cost to manage and run tests. A typical approach companies use to save testing time is to check the quality of source data and final consumption data
+
+3.3. Avoid data duplicates with idempotent pipelines
+
+When re-running data pipelines, we must ensure the output does not contain duplicate rows. The property of a system to always produce the same output, given the same inputs, is called idempotence .
+
+Shown below are two techniques to avoid data duplicates when re-running data pipelines:
+1. Run id based overwrites: 
+Used for append only output data. Ensure that your output data has the run id as a partition column (e.g. partition column in our gold table ). The run id represents the time range that the data created belongs to
+2. Natural key-based UPSERTS: 
+Used when the pipeline performs inserts and updates on output data with a Natural key 
+
+3.5. Know the when, how, & what (aka metadata) of pipeline runs for easier debugging
+
+For each processing step, we should track it’s
+
+1. Inputs & Outputs
+2. Start and end times
+3. Number of retries(if any), along with which ones passed and which ones failed
+
+Ideally, the following information about the data should be in version control:
+1. Unique keys (if any): The columns representing a unique field.
+2. Physical storage location: The physical storage location of the dataset, e.g. (s3://your-bucket/data-name)
+3. Table (or dataset) name: The output table/dataset name.
+4. Storage type: The data storage format (Delta, Iceberg, etc.)
+5. Partition key(s) (if any): Column(s) by which the data is partitioned.
+6. Data Schema: Column names with data types.
+
+
+3.6. Use tests to check code behavior and not break existing logic
+There are three main types of tests for data pipelines.
+1. Unit: Tests to ensure a single function works as expected. eg. test_get_bronze_datasets
+2. Integration: Tests to check that two or more systems are working together as expected. eg. test_get_validate_publish_silver_datasets tests the intergration between transformation and I/O systems.
+3. End-to-End: Tests to check that the system is working end-to-end as expected. These are hard to set up for complex systems and are often overkill.
+
+Most companies (both big & small) may have only some of these best practices in place; this may be due to prioritizing different outcomes, or there may be no need for some.
+
+Analyze your pipelines/requirements, identify high-priority issues, and use best practices to address them before spending a lot of time implementing best practices to have best practices.
