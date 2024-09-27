@@ -1,1 +1,91 @@
 To test the pipline in python, you can use pytest. It can help the pipeline to keep updating data even though there is new features
+
+2 overarching types of tests to ensure data quality and correctness:
+- Testing for data quality after processing and before it’s available to end-users.
+- Standard tests, such as systems, unit, integration, and contract tests.
+
+A common order for adding tests is shown below : 
+- End-to-end system testing
+- Data quality testing
+- Monitoring and alerting (not technically testing, but crucial to detect data size skews, pipeline breakages, etc)
+- Unit and contract testing
+
+1. End-to-end system testing
+As you are starting to add new features, you mustn’t break the existing functionality. For this purpose, you should have end-to-end testing. 
+
+A sample snippet for adding systems test, using pytest.
+import pytest
+
+from your.data_pipeline_path import run_your_datapipeline
+
+
+class TestYourDataPipeline:
+    @pytest.fixtures(scope="class", autouse=True)
+    def input_data_fixture(self):
+        # get input fixture data ready
+        yield
+        self.tear_down()
+
+    def test_data_pipeline_success(self):
+        run_your_datapipeline()
+        result = {"some data or file"}
+        expected_result = "predefined expected data or file"
+        assert result == expected_result
+
+    def tear_down(self):
+        # remove input fixture data
+
+
+2. Data quality testing
+
+We add 2 tasks to the data pipeline:
+
+Task to load the transformed data into a temporary staging table/dataset.
+Task to ensure that the data in the temporary staging table falls within the expectation we have of the processed data. This step usually includes checking for uniqueness constraints, allowed values set, business rules, outlier checks, etc
+
+Note how this test is run every time as a part of the data pipeline, unlike the end-to-end test which is not run as a part of the data pipeline
+
+
+
+3. Monitoring and alerting
+With data quality testing , we can be reasonably confident of the quality of our data. But there can be unexpected skews in data size, skews in the number of rows dropped, etc. In order to catch unexpected changes in data size, we need to monitor our data pipeline. This can be done by sending logs to a service like datadog/newrelic or sending metrics to a database. 
+
+The logs can be as simple as a count of rows before and after the transformation step.
+// logs
+{"start_datetime": "2021-06-15 04:55:55", "end_datetime": "2021-06-15 05:10:15", "run_id": "unique_run_id", "transformation_id": "transformation_step_unique_id", "row_count_before": 1000, "row_count_after": 700, "other_metadata": "some number"}
+
+With end-to-end testing , we can add new features without the fear of breaking the data pipeline. But there can still be errors such as out-of-memory errors, file not found errors, etc. In order to be notified of pipeline breakage promptly, we need to set up alerting for our data pipeline. This can be done by setting up slack/email alerts from a service like datadog or newrelic.
+
+4. Unit and contract testing
+Having end-to-end system testing , data quality testing , and monitoring and alerting in place will give you the confidence to move fast and deliver good quality data. The next step is to add standard unit tests for your functions and contract tests where your data pipeline interacts with external systems, such as an API call to a microservice or an external vendor.
+
+
+
+
+Some critical concepts for testing.
+- Test scripts: While we can create one test script and test all our functions in there, it’s best practice to have one test file per pipeline (e.g., test_twitter.py & test_reddit.py). Pytest uses file and function names (prefaced with test_) to identify test functions (see this link for more details ).
+- Schema setup: When testing locally, it’s ideal to create (set up) and drop (teardown) tables per test run. Recreating tables each time you run all the tests in your test directory will enable you to write more straightforward tests (e.g., if you are testing if a function inserts ten rows into a table without a teardown of the tables, the next run will show 20 rows). When setting up schema (or fake data) for testing, we can create them at different scopes. The different scopes are
+  1. Session level: The setup is run once before we start testing all the test files, and the teardown is run once after all the testing is done.
+  2. Class level: The setup and teardown are before and after each Class (usually named class Testxyz).
+  3. Function level: The setup and teardown are before and after each function (usually named test_).
+- Fixtures: When testing, we don’t want to hit external API (Reddit/Twitter) as it may be costly and may return different data each time, making testing almost impossible. We can create static data to replicate data from external systems, called fixtures. One way to use a fixture with Pytest is to create functions (mock_twitter_data & mock_reddit_data ) that return the static data and add them as inputs (dependency injection) to the functions where we need to use them (e.g., test_transform ).
+- Mocking functions: When we run tests, we might want to override the behavior of a function. In such cases, we can use mocker to override the behavior of a function. E.g., We want to return a db connection to our testdb, wherever we call the db_factory function. We can define this using mocker, as shown here . Note that we define mocks for db_factory twice, this is because when we mock a function we need to specify the location that it is used at, not where it is defined, this allows us the flexibility to mock function based on where they are used. We use a session_mocker to specify that the mock applies to the entire session (there is a mocker for non-session level mocking).
+
+We can run tests as shown below.
+python -m pytest --log-cli-level info -p no:warnings -v ./tests
+
+
+
+
+
+3.2. Ensure data is valid before exposing it to its consumers (aka data quality checks)
+When building a dataset, it’s critical to identify what you expect of that data. The expectations of the dataset can be as simple as a column being true to more complex business requirements.
+If downstream consumers use bad data, it can be disastrous. The process to rectify usage of bad data often involves the time-consuming and expensive re-running of all the affected processes!
+
+While DQ checks help significantly, it’s easy to overdo DQ checks; some issues with too many tests are:
+- Increased pipeline run time
+- Increased cost, as running tests require a full table scan (not always)
+- Redundant tests. E.g., having a Not null check on two tables, unioning them, and doing a not null check again.
+- More code
+
+You have to decide on a tradeoff between the quality of your output data and the cost to manage and run tests.
