@@ -1,0 +1,18 @@
+Basic SQL Syntax :
+SELECT ....
+FROM.... 
+
+Additional :
+- Order by : to order 
+- where : to filter 
+- having : to filter but using aggregate function
+
+WINDOW FUNCTION :
+use partition by 
+choose the right element to be partitioned
+
+functions : 
+- sum, avg, count (basic sql functions) also can be used with partition by so it acts like window function
+- lag
+- lead
+- rank, dense_rank, row_number
