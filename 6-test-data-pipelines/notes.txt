@@ -1,0 +1,1 @@
+To test the pipline in python, you can use pytest. It can help the pipeline to keep updating data even though there is new features
